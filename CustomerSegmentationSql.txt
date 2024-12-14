@@ -1,0 +1,103 @@
+CREATE DATABASE retail_analysis;
+CREATE SCHEMA sales_insights;
+USE DATABASE retail_analysis;
+USE SCHEMA sales_insights;
+CREATE TABLE client_details (
+    client_id INT PRIMARY KEY,           
+    client_name STRING,                  
+    email_address STRING,                
+    registration_date DATE               
+);
+INSERT INTO client_details (client_id, client_name, email_address, registration_date)
+VALUES 
+    (201, 'Alice', 'alice@example.com', '2023-01-10'),
+    (202, 'Bob', 'bob@example.com', '2023-05-15'),
+    (203, 'Charlie', 'charlie@example.com', '2022-12-01');
+CREATE TABLE order_records (
+    order_id INT AUTOINCREMENT,        
+    client_id INT,                     
+    order_date DATE,                    
+    total_amount DECIMAL(10, 2)        
+);
+INSERT INTO order_records (client_id, order_date, total_amount)
+VALUES 
+    (201, '2024-10-01', 500.00),
+    (202, '2024-10-05', 200.00),
+    (201, '2024-10-07', 300.00),
+    (203, '2024-10-08', 1000.00),
+    (202, '2024-10-10', 400.00),
+    (203, '2024-11-01', 1500.00);
+CREATE OR REPLACE TABLE client_rfm_scores AS
+WITH RFM AS (
+    SELECT 
+        c.client_id,
+        c.client_name,
+        DATEDIFF(DAY, MAX(o.order_date), CURRENT_DATE) AS recency,  
+        COUNT(o.order_id) AS frequency,                            
+        SUM(o.total_amount) AS monetary                             
+    FROM order_records o
+    JOIN client_details c ON o.client_id = c.client_id
+    GROUP BY c.client_id, c.client_name
+)
+SELECT * FROM RFM;
+CREATE OR REPLACE TABLE segmented_clients AS
+WITH RFM AS (
+    SELECT 
+        c.client_id,
+        c.client_name,
+        DATEDIFF(DAY, MAX(o.order_date), CURRENT_DATE) AS recency,
+        COUNT(o.order_id) AS frequency,
+        SUM(o.total_amount) AS monetary
+    FROM order_records o
+    JOIN client_details c ON o.client_id = c.client_id
+    GROUP BY c.client_id, c.client_name
+)
+SELECT 
+    client_id,
+    client_name,
+    CASE 
+        WHEN recency <= 30 THEN 'Active'
+        WHEN recency BETWEEN 31 AND 90 THEN 'Dormant'
+        ELSE 'Inactive'
+    END AS recency_segment,
+    CASE 
+        WHEN frequency >= 2 THEN 'Frequent Buyer'
+        ELSE 'Occasional Buyer'
+    END AS frequency_segment,
+    CASE 
+        WHEN monetary >= 1000 THEN 'High Value'
+        ELSE 'Low Value'
+    END AS monetary_segment
+FROM RFM;
+CREATE OR REPLACE TABLE segmented_clients AS
+WITH RFM AS (
+    SELECT 
+        c.client_id,
+        c.client_name,
+        DATEDIFF(DAY, MAX(o.order_date), CURRENT_DATE) AS recency,
+        COUNT(o.order_id) AS frequency,
+        SUM(o.total_amount) AS monetary
+    FROM order_records o
+    JOIN client_details c ON o.client_id = c.client_id
+    GROUP BY c.client_id, c.client_name
+)
+SELECT 
+    client_id,
+    client_name,
+    CASE 
+        WHEN recency <= 30 THEN 'Active'
+        WHEN recency BETWEEN 31 AND 90 THEN 'Dormant'
+        ELSE 'Inactive'
+    END AS recency_segment,
+    CASE 
+        WHEN frequency >= 2 THEN 'Frequent Buyer'
+        ELSE 'Occasional Buyer'
+    END AS frequency_segment,
+    CASE 
+        WHEN monetary >= 1000 THEN 'High Value'
+        ELSE 'Low Value'
+    END AS monetary_segment
+FROM RFM;
+SELECT * FROM client_rfm_scores;
+SELECT * FROM segmented_clients;
+
